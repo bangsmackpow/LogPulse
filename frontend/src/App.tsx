@@ -1,14 +1,23 @@
+import React, { useState } from 'react';
 import { 
   Activity, 
   Search, 
   Settings, 
   Bookmark, 
-  RefreshCw, 
   Filter
 } from 'lucide-react';
 import { useLogStore } from './stores/useLogStore';
+import { useLogStream } from './hooks/useLogStream';
+import { LogTree } from './components/LogTree';
+import { VirtualizedGrid } from './components/VirtualizedGrid';
+import { ContextMenu } from './components/ContextMenu';
+import { AIModal } from './components/AIModal';
+import { SettingsModal } from './components/SettingsModal';
+import { DiscoveredLog, LogLine } from './types';
 
 export default function App() {
+  useLogStream();
+
   const { 
     logs, 
     selectedLog, 
@@ -21,6 +30,55 @@ export default function App() {
     setSessionActive, 
     addMarker 
   } = useLogStore();
+
+  const [showSettings, setShowSettings] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [aiTargetIndex, setAiTargetIndex] = useState<number | undefined>(undefined);
+
+  // Context Menu State
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    text: string;
+    filePath?: string;
+    lineIndex?: number;
+  } | null>(null);
+
+  const handleRefresh = () => {
+    if (window.go?.main?.App?.RefreshLogs) {
+      window.go.main.App.RefreshLogs().then((res) => {
+        if (res && res.length > 0) {
+          useLogStore.getState().setLogs(res);
+        }
+      });
+    }
+  };
+
+  const handleFileContextMenu = (e: React.MouseEvent, log: DiscoveredLog) => {
+    e.preventDefault();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      text: log.filePath,
+      filePath: log.filePath,
+    });
+  };
+
+  const handleLineContextMenu = (e: React.MouseEvent, line: LogLine, index: number) => {
+    e.preventDefault();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      text: line.raw,
+      filePath: line.fileId,
+      lineIndex: index,
+    });
+  };
+
+  const handleQuickInvestigate = (_line: LogLine, index: number) => {
+    setAiTargetIndex(index);
+    setShowAIModal(true);
+  };
 
   return (
     <div className="flex h-screen w-screen flex-col bg-canvas-900 text-gray-200 select-none">
@@ -99,8 +157,9 @@ export default function App() {
         {/* Right Action Icons */}
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setShowSettings(true)}
             className="rounded p-1.5 text-gray-400 hover:bg-canvas-700 hover:text-gray-200"
-            title="Settings"
+            title="Settings & AI Providers"
           >
             <Settings className="h-4 w-4" />
           </button>
@@ -111,36 +170,7 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar: Discovered Logs Catalog */}
         <aside className="w-72 border-r border-canvas-700 bg-canvas-800 flex flex-col">
-          <div className="flex items-center justify-between border-b border-canvas-700 px-3 py-2 text-xs font-semibold text-gray-400">
-            <span>DISCOVERED LOGS</span>
-            <RefreshCw className="h-3.5 w-3.5 cursor-pointer hover:text-white" />
-          </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {logs.map((log) => (
-              <div
-                key={log.filePath}
-                onClick={() => useLogStore.getState().selectLog(log)}
-                className={`group flex flex-col rounded p-2 text-xs cursor-pointer transition-colors ${
-                  selectedLog?.filePath === log.filePath
-                    ? 'bg-indigo-950/60 border border-indigo-700/60 text-white'
-                    : 'bg-canvas-900/40 hover:bg-canvas-700/50 text-gray-300'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-indigo-300 truncate">{log.appName}</span>
-                  <span className="text-[10px] text-gray-500 uppercase">{log.format}</span>
-                </div>
-                <span className="text-[11px] text-gray-400 truncate mt-0.5" title={log.filePath}>
-                  {log.filePath}
-                </span>
-              </div>
-            ))}
-            {logs.length === 0 && (
-              <div className="text-center text-xs text-gray-500 py-6">
-                Scanning disk for logs...
-              </div>
-            )}
-          </div>
+          <LogTree onRefresh={handleRefresh} onContextMenu={handleFileContextMenu} />
         </aside>
 
         {/* Central Log Stream Viewport */}
@@ -149,34 +179,64 @@ export default function App() {
             <span className="truncate">
               {selectedLog ? selectedLog.filePath : 'Select a log to start live tail'}
             </span>
-            <span>{lines.length.toLocaleString()} lines</span>
+            <span>{lines.length.toLocaleString()} lines in buffer</span>
           </div>
 
-          {/* Virtual Grid Area Placeholder - connected in Task 8 */}
-          <div className="flex-1 overflow-auto p-2 font-mono text-xs">
+          <div className="flex-1 overflow-hidden">
             {lines.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center text-gray-500">
-                <Filter className="h-8 w-8 mb-2 opacity-50" />
-                <p>Waiting for log lines or select a file from the sidebar</p>
+                <Filter className="h-8 w-8 mb-2 opacity-40" />
+                <p>Select a log file from the catalog to stream live</p>
               </div>
             ) : (
-              lines.slice(-100).map((l, i) => (
-                <div key={i} className="flex gap-3 py-0.5 hover:bg-canvas-800/40">
-                  <span className="w-12 text-right text-gray-600 select-none">{l.lineNumber}</span>
-                  <span className={`w-14 font-semibold ${
-                    l.level === 'ERROR' ? 'text-red-400' :
-                    l.level === 'WARN' ? 'text-amber-400' :
-                    l.level === 'DEBUG' ? 'text-gray-400' : 'text-blue-400'
-                  }`}>
-                    {l.level}
-                  </span>
-                  <span className="flex-1 text-gray-300 break-all">{l.raw}</span>
-                </div>
-              ))
+              <VirtualizedGrid
+                lines={lines}
+                onContextMenu={handleLineContextMenu}
+                onQuickInvestigate={handleQuickInvestigate}
+              />
             )}
           </div>
         </main>
       </div>
+
+      {/* Right-Click Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          selectedText={contextMenu.text}
+          filePath={contextMenu.filePath}
+          onClose={() => setContextMenu(null)}
+          onInvestigateAI={() => {
+            setAiTargetIndex(contextMenu.lineIndex);
+            setShowAIModal(true);
+          }}
+          onOpenEditor={
+            contextMenu.filePath
+              ? () => window.go?.main?.App?.OpenFileInEditor(contextMenu.filePath!)
+              : undefined
+          }
+          onRevealExplorer={
+            contextMenu.filePath
+              ? () => window.go?.main?.App?.RevealInExplorer(contextMenu.filePath!)
+              : undefined
+          }
+          onAddMarker={() => addMarker(`Mark @ line ${contextMenu.lineIndex || lines.length}`)}
+        />
+      )}
+
+      {/* AI Investigation Modal */}
+      <AIModal
+        isOpen={showAIModal}
+        onClose={() => setShowAIModal(false)}
+        targetLineIndex={aiTargetIndex}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
     </div>
   );
 }

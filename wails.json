@@ -1,0 +1,19 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "logpulse",
+  "outputfilename": "logpulse",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "LogPulse Team"
+  },
+  "info": {
+    "companyName": "LogPulse",
+    "productName": "LogPulse",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright 2026",
+    "comments": "High-Performance Desktop Log Discovery and AI Diagnostic Workbench"
+  }
+}

@@ -73,12 +73,15 @@ func TestApp_InvestigateWithAI(t *testing.T) {
 		t.Errorf("expected 1 log, got %d", len(logs))
 	}
 
-	// Test Scrubbing through IPC method
-	scrubbed, matches := app.ScrubText("Error at 192.168.1.1 with user user@test.com")
-	if len(matches) != 2 {
-		t.Errorf("expected 2 matches, got %d", len(matches))
+	// Test Scrubbing through IPC method returning ScrubResult
+	result, err := app.ScrubText("Error at 192.168.1.1 with user user@test.com")
+	if err != nil {
+		t.Fatalf("ScrubText failed: %v", err)
 	}
-	if scrubbed != "Error at [REDACTED_IP] with user [REDACTED_EMAIL]" {
-		t.Errorf("unexpected scrubbed output: %s", scrubbed)
+	if len(result.Matches) != 2 {
+		t.Errorf("expected 2 matches, got %d", len(result.Matches))
+	}
+	if result.Text != "Error at [REDACTED_IP] with user [REDACTED_EMAIL]" {
+		t.Errorf("unexpected scrubbed output: %s", result.Text)
 	}
 }

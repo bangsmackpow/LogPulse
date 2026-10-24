@@ -14,6 +14,7 @@ interface LogState {
   setLogs: (logs: DiscoveredLog[]) => void;
   addDiscoveredLog: (log: DiscoveredLog) => void;
   selectLog: (log: DiscoveredLog | null) => void;
+  toggleLogSelection: (log: DiscoveredLog) => void;
   appendLines: (newLines: LogLine[]) => void;
   clearLines: () => void;
   toggleLevel: (level: string) => void;
@@ -47,6 +48,20 @@ export const useLogStore = create<LogState>((set) => ({
       const active = new Set(state.activeTailedPaths);
       if (log) active.add(log.filePath);
       return { selectedLog: log, activeTailedPaths: active, lines: [] };
+    }),
+
+  toggleLogSelection: (log) =>
+    set((state) => {
+      const active = new Set(state.activeTailedPaths);
+      if (active.has(log.filePath)) {
+        active.delete(log.filePath);
+      } else {
+        active.add(log.filePath);
+      }
+      return {
+        selectedLog: log,
+        activeTailedPaths: active,
+      };
     }),
 
   appendLines: (newLines) =>

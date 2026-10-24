@@ -18,6 +18,11 @@ import (
 	"logpulse/internal/tailer"
 )
 
+type ScrubResult struct {
+	Text    string          `json:"text"`
+	Matches []ai.ScrubMatch `json:"matches"`
+}
+
 type App struct {
 	ctx         context.Context
 	store       *db.Store
@@ -131,6 +136,33 @@ func (a *App) StartTail(path string) error {
 		return nil // already tailing
 	}
 
+	// Handle Windows .evtx event logs
+	if filepath.Ext(path) == ".evtx" || filepath.Ext(path) == ".xml" {
+		records, err := a.eventReader.ReadFile(path, 500)
+		if err == nil && len(records) > 0 {
+			var lines []tailer.LogLine
+			for i, r := range records {
+				lvl := "INFO"
+				if r.Level == "Error" || r.Level == "Critical" {
+					lvl = "ERROR"
+				} else if r.Level == "Warning" {
+					lvl = "WARN"
+				}
+				lines = append(lines, tailer.LogLine{
+					FileID:     path,
+					LineNumber: int64(i + 1),
+					Timestamp:  r.Timestamp,
+					Raw:        fmt.Sprintf("[%s] EventID %d (%s): %s", r.Level, r.ID, r.Provider, r.Message),
+					Level:      lvl,
+				})
+			}
+			if a.ctx != nil {
+				wailsRuntime.EventsEmit(a.ctx, "log:batch", lines)
+			}
+			return nil
+		}
+	}
+
 	session, err := tailer.StartTail(path, 1000, func(batch []tailer.LogLine) {
 		if a.ctx != nil {
 			wailsRuntime.EventsEmit(a.ctx, "log:batch", batch)
@@ -155,8 +187,12 @@ func (a *App) StopTail(path string) error {
 	return nil
 }
 
-func (a *App) ScrubText(text string) (string, []ai.ScrubMatch) {
-	return ai.ScrubPII(text)
+func (a *App) ScrubText(text string) (ScrubResult, error) {
+	scrubbed, matches := ai.ScrubPII(text)
+	return ScrubResult{
+		Text:    scrubbed,
+		Matches: matches,
+	}, nil
 }
 
 func (a *App) EstimateCost(provider, model, prompt string) map[string]interface{} {

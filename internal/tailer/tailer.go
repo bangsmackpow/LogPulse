@@ -39,6 +39,39 @@ func ParseLogLevel(raw string) string {
 	return "INFO"
 }
 
+// SanitizeLogLine replaces invalid UTF-8 byte sequences with unicode replacement character
+func SanitizeLogLine(raw string) string {
+	return strings.ToValidUTF8(raw, "\uFFFD")
+}
+
+var timestampFormats = []string{
+	time.RFC3339Nano,
+	time.RFC3339,
+	"2006-01-02 15:04:05.000",
+	"2006-01-02 15:04:05",
+	"2006-01-02T15:04:05",
+	"Jan _2 15:04:05",
+}
+
+// ExtractTimestamp attempts to parse standard timestamp formats at the beginning of a log line
+func ExtractTimestamp(raw string) (time.Time, bool) {
+	trimmed := strings.TrimSpace(raw)
+	if len(trimmed) < 15 {
+		return time.Time{}, false
+	}
+
+	for _, format := range timestampFormats {
+		prefixLen := len(format)
+		if len(trimmed) >= prefixLen {
+			candidate := trimmed[:prefixLen]
+			if t, err := time.Parse(format, candidate); err == nil {
+				return t, true
+			}
+		}
+	}
+	return time.Time{}, false
+}
+
 type TailSession struct {
 	filePath   string
 	maxTail    int
@@ -96,10 +129,6 @@ func StartTail(filePath string, maxTailLines int, onBatch func([]LogLine)) (*Tai
 	return session, nil
 }
 
-func openSharedRead(filePath string) (*os.File, error) {
-	return os.OpenFile(filePath, os.O_RDONLY, 0644)
-}
-
 func (s *TailSession) readInitialTail() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -148,12 +177,17 @@ func (s *TailSession) readInitialTail() {
 
 	for _, text := range lines {
 		s.lineNum++
+		cleanText := SanitizeLogLine(text)
+		ts, hasTs := ExtractTimestamp(cleanText)
+		if !hasTs {
+			ts = time.Now()
+		}
 		s.batcher.Add(LogLine{
 			FileID:     s.filePath,
 			LineNumber: s.lineNum,
-			Timestamp:  time.Now(),
-			Raw:        text,
-			Level:      ParseLogLevel(text),
+			Timestamp:  ts,
+			Raw:        cleanText,
+			Level:      ParseLogLevel(cleanText),
 		})
 	}
 	s.batcher.Flush()
@@ -216,12 +250,16 @@ func (s *TailSession) readNewLines() {
 	for {
 		line, err := reader.ReadString('\n')
 		if len(line) > 0 {
-			cleanLine := strings.TrimRight(line, "\r\n")
+			cleanLine := SanitizeLogLine(strings.TrimRight(line, "\r\n"))
 			s.lineNum++
+			ts, hasTs := ExtractTimestamp(cleanLine)
+			if !hasTs {
+				ts = time.Now()
+			}
 			s.batcher.Add(LogLine{
 				FileID:     s.filePath,
 				LineNumber: s.lineNum,
-				Timestamp:  time.Now(),
+				Timestamp:  ts,
 				Raw:        cleanLine,
 				Level:      ParseLogLevel(cleanLine),
 			})

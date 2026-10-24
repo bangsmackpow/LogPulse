@@ -10,6 +10,38 @@ import (
 	"logpulse/internal/tailer"
 )
 
+func TestExtractTimestamp(t *testing.T) {
+	line1 := "2026-10-24T14:30:00Z [INFO] Started"
+	ts1, ok := tailer.ExtractTimestamp(line1)
+	if !ok || ts1.Year() != 2026 {
+		t.Errorf("failed to extract RFC3339 timestamp from %q, got: %v", line1, ts1)
+	}
+
+	line2 := "2026-10-24 14:30:00 [ERROR] Failed"
+	ts2, ok := tailer.ExtractTimestamp(line2)
+	if !ok || ts2.Year() != 2026 {
+		t.Errorf("failed to extract standard timestamp from %q, got: %v", line2, ts2)
+	}
+
+	line3 := "No timestamp in this line"
+	_, ok3 := tailer.ExtractTimestamp(line3)
+	if ok3 {
+		t.Errorf("expected false for un-timestamped line %q", line3)
+	}
+}
+
+func TestSanitizeLogLine(t *testing.T) {
+	rawWithInvalidUTF8 := string([]byte{'E', 'r', 'r', 'o', 'r', ':', ' ', 0xFF, 0xFE, '!'})
+	sanitized := tailer.SanitizeLogLine(rawWithInvalidUTF8)
+
+	for _, r := range sanitized {
+		if r == 0xFFFD {
+			return // replacement rune correctly placed
+		}
+	}
+	t.Errorf("expected replacement character in sanitized line, got %q", sanitized)
+}
+
 func TestParseLogLevel(t *testing.T) {
 	tests := []struct {
 		line     string

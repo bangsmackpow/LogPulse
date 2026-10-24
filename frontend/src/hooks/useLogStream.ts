@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useLogStore } from '../stores/useLogStore';
-import { DiscoveredLog, LogLine } from '../types';
+import { DiscoveredLog, LogLine, ScrubMatch } from '../types';
 
 declare global {
   interface Window {
@@ -21,7 +21,7 @@ declare global {
           SaveSettings: (settings: Record<string, string>) => Promise<void>;
           InvestigateWithAI: (req: any) => Promise<any>;
           EstimateCost: (provider: string, model: string, prompt: string) => Promise<any>;
-          ScrubText: (text: string) => Promise<any>;
+          ScrubText: (text: string) => Promise<{ text: string; matches: ScrubMatch[] }>;
         };
       };
     };
@@ -29,7 +29,7 @@ declare global {
 }
 
 export function useLogStream() {
-  const { setLogs, addDiscoveredLog, appendLines, selectedLog } = useLogStore();
+  const { setLogs, addDiscoveredLog, appendLines, activeTailedPaths } = useLogStore();
 
   useEffect(() => {
     // Load existing discovered logs on mount
@@ -69,18 +69,14 @@ export function useLogStream() {
     }
   }, [setLogs, addDiscoveredLog, appendLines]);
 
-  // When selectedLog changes, trigger StartTail on backend
+  // When activeTailedPaths changes, ensure all paths are being tailed
   useEffect(() => {
-    if (selectedLog && window.go?.main?.App?.StartTail) {
-      window.go.main.App.StartTail(selectedLog.filePath).catch((err) => {
-        console.error('Failed to start tail:', err);
+    if (window.go?.main?.App?.StartTail) {
+      activeTailedPaths.forEach((path) => {
+        window.go!.main!.App!.StartTail(path).catch((err) => {
+          console.error('Failed to start tail for', path, err);
+        });
       });
-
-      return () => {
-        if (window.go?.main?.App?.StopTail) {
-          window.go.main.App.StopTail(selectedLog.filePath).catch(console.error);
-        }
-      };
     }
-  }, [selectedLog]);
+  }, [activeTailedPaths]);
 }

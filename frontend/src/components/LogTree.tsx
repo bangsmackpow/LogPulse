@@ -9,7 +9,7 @@ interface LogTreeProps {
 }
 
 export const LogTree: React.FC<LogTreeProps> = ({ onRefresh, onContextMenu }) => {
-  const { logs, selectedLog, selectLog } = useLogStore();
+  const { logs, selectedLog, selectLog, activeTailedPaths, toggleLogSelection } = useLogStore();
   const [filter, setFilter] = useState('');
 
   const filteredLogs = logs.filter(
@@ -55,14 +55,23 @@ export const LogTree: React.FC<LogTreeProps> = ({ onRefresh, onContextMenu }) =>
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         {filteredLogs.map((log) => {
           const isSelected = selectedLog?.filePath === log.filePath;
+          const isTailed = activeTailedPaths.has(log.filePath);
           return (
             <div
               key={log.filePath}
-              onClick={() => selectLog(log)}
+              onClick={(e) => {
+                if (e.ctrlKey || e.metaKey) {
+                  toggleLogSelection(log);
+                } else {
+                  selectLog(log);
+                }
+              }}
               onContextMenu={(e) => onContextMenu(e, log)}
               className={`group flex flex-col rounded p-2 text-xs cursor-pointer border transition-colors ${
                 isSelected
                   ? 'bg-indigo-950/70 border-indigo-600 text-white shadow-sm'
+                  : isTailed
+                  ? 'bg-indigo-950/30 border-indigo-900 text-indigo-200'
                   : 'bg-canvas-900/50 border-transparent hover:bg-canvas-700/60 hover:border-canvas-600 text-gray-300'
               }`}
             >

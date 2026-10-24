@@ -38,15 +38,19 @@ export const VirtualizedGrid: React.FC<VirtualizedGridProps> = ({
     };
   }, []);
 
-  // Post search task to worker whenever lines, searchTerm, or filterLevel change
+  // Post search task to worker whenever lines, searchTerm, or filterLevel change (with trailing debounce)
   useEffect(() => {
-    if (workerRef.current) {
-      workerRef.current.postMessage({
+    if (!workerRef.current) return;
+
+    const timer = setTimeout(() => {
+      workerRef.current?.postMessage({
         lines,
         searchTerm,
         filterLevel: Array.from(filterLevel),
       });
-    }
+    }, 80);
+
+    return () => clearTimeout(timer);
   }, [lines, searchTerm, filterLevel]);
 
   // Marker lookup map: lineNumber -> marker label

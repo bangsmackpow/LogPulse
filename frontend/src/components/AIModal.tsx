@@ -49,9 +49,12 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, targetLineInd
   useEffect(() => {
     if (window.go?.main?.App?.ScrubText) {
       window.go.main.App.ScrubText(rawContextBlock).then((res: any) => {
-        if (Array.isArray(res) && res.length >= 2) {
-          setScrubbedText(res[0]);
-          setScrubMatches(res[1] || []);
+        if (res && typeof res === 'object' && 'text' in res) {
+          setScrubbedText(res.text);
+          setScrubMatches(res.matches || []);
+        } else if (typeof res === 'string') {
+          setScrubbedText(res);
+          setScrubMatches([]);
         } else {
           setScrubbedText(rawContextBlock);
         }

@@ -13,6 +13,7 @@ import { VirtualizedGrid } from './components/VirtualizedGrid';
 import { ContextMenu } from './components/ContextMenu';
 import { AIModal } from './components/AIModal';
 import { SettingsModal } from './components/SettingsModal';
+import { SessionControl } from './components/SessionControl';
 import { DiscoveredLog, LogLine } from './types';
 
 export default function App() {
@@ -175,6 +176,7 @@ export default function App() {
 
         {/* Central Log Stream Viewport */}
         <main className="flex flex-1 flex-col overflow-hidden bg-canvas-900">
+          <SessionControl />
           <div className="flex h-8 items-center justify-between border-b border-canvas-700 bg-canvas-800/60 px-4 text-xs font-mono text-gray-400">
             <span className="truncate">
               {selectedLog ? selectedLog.filePath : 'Select a log to start live tail'}

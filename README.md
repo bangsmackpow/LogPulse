@@ -98,8 +98,19 @@ npm run dev
 ```
 
 ### Building Desktop Binary
+
+Using Wails CLI:
 ```bash
 wails build
+```
+
+Or using standard Go CLI with required Wails production build tags:
+```bash
+# Windows (GUI mode without console window)
+go build -tags production -ldflags "-H windowsgui" -o build/bin/logpulse.exe .
+
+# macOS / Linux
+go build -tags production -o build/bin/logpulse .
 ```
 
 ---

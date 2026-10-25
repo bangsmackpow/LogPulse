@@ -44,7 +44,10 @@ It automatically catalogues log files across local storage, tails active files i
 
 ```
 logpulse/
-├── build/                     # Wails packaging assets
+├── .github/
+│   └── workflows/
+│       └── release.yml        # Multi-platform matrix build
+├── build/                     # Wails app icons & packaging assets
 ├── frontend/                  # React + TypeScript + Vite + Tailwind
 │   ├── src/
 │   │   ├── components/        # VirtualizedGrid, LogTree, ContextMenu, AIModal, SessionControl
@@ -63,8 +66,28 @@ logpulse/
 ├── app.go                     # Wails bound application logic / IPC bridge
 ├── main.go                    # Application entrypoint
 ├── wails.json                 # Wails project configuration
+├── AGENTS.md                  # Developer & AI Agent Guidelines
 └── README.md
 ```
+
+---
+
+## Multi-Platform Releases (GitHub Actions)
+
+LogPulse features an automated matrix release workflow via [`.github/workflows/release.yml`](.github/workflows/release.yml):
+
+| Target Platform | Runner | Build Dependencies | Packaged Release Asset |
+| :--- | :--- | :--- | :--- |
+| **Windows x64** | `windows-latest` | Go 1.22, Node 20, Wails CLI | `logpulse-windows-amd64.zip` (`.exe`) |
+| **macOS Universal** | `macos-latest` | Go 1.22, Node 20, Wails CLI | `logpulse-macos-universal.zip` (`.app` bundle) |
+| **Linux x64** | `ubuntu-22.04` | `libgtk-3-dev`, `libwebkit2gtk-4.0-dev` | `logpulse-linux-amd64.tar.gz` |
+
+To trigger an automated release across all 3 platforms, push a semantic version tag:
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+Or run the workflow manually under the **Actions** tab on GitHub via `workflow_dispatch`.
 
 ---
 

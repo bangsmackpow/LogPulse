@@ -141,8 +141,9 @@ The automated release workflow lives in [`.github/workflows/release.yml`](.githu
 - **Triggers:**
   - Pushing any tag matching `v*` (e.g. `v1.0.0`, `v1.0.1`).
   - Manual execution via `workflow_dispatch` in the GitHub Actions console.
-- **Matrix Runners:**
-  - `windows-latest` -> `logpulse-windows-amd64.zip`
-  - `macos-latest` -> `logpulse-macos-universal.zip`
+- **Matrix Runners & Deliverables:**
+  - `windows-latest` -> `logpulse-windows-amd64-setup.exe` (Inno Setup installer with Desktop shortcut and Start Menu entry) & `logpulse-windows-amd64.zip` (portable binary)
+  - `macos-latest` -> `logpulse-macos-universal.zip` (`.app` bundle)
   - `ubuntu-22.04` -> `logpulse-linux-amd64.tar.gz` (installs `libwebkit2gtk-4.0-dev` and `libgtk-3-dev`)
-- All assets are automatically attached to the corresponding GitHub Release.
+- **Release Aggregation:**
+  - Dedicated `release` job downloads all matrix artifacts and attaches them to the GitHub Release via `softprops/action-gh-release@v2`.

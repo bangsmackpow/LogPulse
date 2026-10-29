@@ -19,20 +19,14 @@ jobs:
         include:
           - os: windows-latest
             platform: windows/amd64
-            output_name: logpulse-windows-amd64.exe
-            asset_path: build/bin/logpulse.exe
             archive_name: logpulse-windows-amd64.zip
 
           - os: macos-latest
             platform: darwin/universal
-            output_name: logpulse-darwin-universal
-            asset_path: build/bin/LogPulse.app
             archive_name: logpulse-macos-universal.zip
 
           - os: ubuntu-22.04
             platform: linux/amd64
-            output_name: logpulse-linux-amd64
-            asset_path: build/bin/logpulse
             archive_name: logpulse-linux-amd64.tar.gz
 
     steps:
@@ -42,7 +36,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.23'
           cache: true
 
       - name: Setup Node.js
@@ -59,7 +53,7 @@ jobs:
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.9.2
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.0
 
       - name: Install Frontend Dependencies & Build
         run: |
@@ -71,31 +65,86 @@ jobs:
         run: |
           wails build -platform ${{ matrix.platform }} -clean
 
+      - name: Build Windows Installer (Inno Setup)
+        if: runner.os == 'Windows'
+        run: |
+          $iscc = (Get-Command iscc -ErrorAction SilentlyContinue)?.Source
+          if (-not $iscc) {
+            $candidates = @(
+              "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+              "C:\Program Files\Inno Setup 6\ISCC.exe",
+              "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
+            )
+            foreach ($c in $candidates) {
+              if (Test-Path $c) { $iscc = $c; break }
+            }
+          }
+          if (-not $iscc) {
+            choco install innosetup -y
+            $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          }
+          Write-Host "Compiling installer using: $iscc"
+          & $iscc build/windows/installer/logpulse-installer.iss
+
       - name: Package Windows Binary
         if: runner.os == 'Windows'
         run: |
-          Compress-Archive -Path build/bin/logpulse.exe -DestinationPath ${{ matrix.archive_name }}
+          Compress-Archive -Path build/bin/logpulse.exe -DestinationPath logpulse-windows-amd64.zip
 
       - name: Package macOS Application
         if: runner.os == 'macOS'
         run: |
-          ditto -c -k --sequesterRsrc --keepParent build/bin/LogPulse.app ${{ matrix.archive_name }}
+          ditto -c -k --sequesterRsrc --keepParent build/bin/LogPulse.app logpulse-macos-universal.zip
 
       - name: Package Linux Binary
         if: runner.os == 'Linux'
         run: |
-          tar -czvf ${{ matrix.archive_name }} -C build/bin logpulse
+          tar -czvf logpulse-linux-amd64.tar.gz -C build/bin logpulse
 
-      - name: Upload Artifact
+      - name: Upload Windows Artifacts
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.archive_name }}
-          path: ${{ matrix.archive_name }}
+          name: windows-artifacts
+          path: |
+            build/bin/logpulse-windows-amd64-setup.exe
+            logpulse-windows-amd64.zip
 
-      - name: Publish Release Asset (Tag Only)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Upload macOS Artifacts
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifacts
+          path: logpulse-macos-universal.zip
+
+      - name: Upload Linux Artifacts
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-artifacts
+          path: logpulse-linux-amd64.tar.gz
+
+  release:
+    name: Publish Release Assets
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List Release Files
+        run: ls -la artifacts
+
+      - name: Publish to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ matrix.archive_name }}
+          files: artifacts/*
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

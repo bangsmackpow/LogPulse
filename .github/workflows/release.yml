@@ -89,6 +89,7 @@ jobs:
       - name: Package Windows Binary
         if: runner.os == 'Windows'
         run: |
+          Move-Item build/bin/logpulse-windows-amd64-setup.exe .
           Compress-Archive -Path build/bin/logpulse.exe -DestinationPath logpulse-windows-amd64.zip
 
       - name: Package macOS Application
@@ -107,7 +108,7 @@ jobs:
         with:
           name: windows-artifacts
           path: |
-            build/bin/logpulse-windows-amd64-setup.exe
+            logpulse-windows-amd64-setup.exe
             logpulse-windows-amd64.zip
 
       - name: Upload macOS Artifacts

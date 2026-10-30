@@ -79,7 +79,7 @@ export const useLogStore = create<LogState>((set) => ({
       const newSet = new Set(newPaths);
       // Clean up previous tails
       state.activeTailedPaths.forEach((oldPath) => {
-        if (!newSet.has(oldPath) && window.go?.main?.App?.StopTail) {
+        if (window.go?.main?.App?.StopTail) {
           window.go.main.App.StopTail(oldPath).catch((err) => {
             console.error('Failed to stop tail:', oldPath, err);
           });

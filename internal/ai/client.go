@@ -89,6 +89,10 @@ func (c *MultiProviderClient) Query(ctx context.Context, req AIRequest) (*AIResp
 		fullPrompt = fmt.Sprintf("%s\n\nSYSTEM TELEMETRY:\n%s", fullPrompt, req.Telemetry)
 	}
 
+	// Mandatory pre-flight PII redaction across full prompt (including notes and telemetry)
+	scrubbedPrompt, _ := ScrubPII(fullPrompt)
+	fullPrompt = scrubbedPrompt
+
 	inTokens := EstimateTokens(fullPrompt)
 	providerLower := strings.ToLower(req.Provider)
 

@@ -20,6 +20,7 @@ export const VirtualizedGrid: React.FC<VirtualizedGridProps> = ({
   const [filteredIndices, setFilteredIndices] = useState<number[]>([]);
   const isAtTopRef = useRef(true);
   const isAtBottomRef = useRef(true);
+  const prevNewestOnTopRef = useRef(isNewestOnTop);
 
   // Search Web Worker instance
   const workerRef = useRef<Worker | null>(null);
@@ -86,6 +87,24 @@ export const VirtualizedGrid: React.FC<VirtualizedGridProps> = ({
     isAtTopRef.current = target.scrollTop <= 40;
     isAtBottomRef.current = target.scrollHeight - target.scrollTop - target.clientHeight <= 40;
   };
+
+  // When isNewestOnTop toggle changes, immediately reposition viewport to the start of the new order
+  useEffect(() => {
+    if (prevNewestOnTopRef.current !== isNewestOnTop) {
+      prevNewestOnTopRef.current = isNewestOnTop;
+      if (filteredIndices.length > 0) {
+        if (isNewestOnTop) {
+          rowVirtualizer.scrollToOffset(0);
+          isAtTopRef.current = true;
+          isAtBottomRef.current = false;
+        } else {
+          rowVirtualizer.scrollToIndex(filteredIndices.length - 1);
+          isAtBottomRef.current = true;
+          isAtTopRef.current = false;
+        }
+      }
+    }
+  }, [isNewestOnTop, filteredIndices.length]);
 
   useEffect(() => {
     if (!parentRef.current || filteredIndices.length === 0) return;

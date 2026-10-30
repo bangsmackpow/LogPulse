@@ -205,9 +205,18 @@ func (a *App) EstimateCost(provider, model, prompt string) map[string]interface{
 }
 
 func (a *App) InvestigateWithAI(req ai.AIRequest) (*ai.AIResponse, error) {
-	// Auto-scrub prompt for privacy
+	// Auto-scrub all fields for privacy
 	scrubbedPrompt, _ := ai.ScrubPII(req.Prompt)
 	req.Prompt = scrubbedPrompt
+
+	if req.UserNotes != "" {
+		scrubbedNotes, _ := ai.ScrubPII(req.UserNotes)
+		req.UserNotes = scrubbedNotes
+	}
+	if req.Telemetry != "" {
+		scrubbedTelemetry, _ := ai.ScrubPII(req.Telemetry)
+		req.Telemetry = scrubbedTelemetry
+	}
 
 	ctx := context.Background()
 	if a.ctx != nil {

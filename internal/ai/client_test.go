@@ -2,10 +2,12 @@ package ai_test
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"logpulse/internal/ai"
@@ -188,5 +190,42 @@ func TestMultiProviderClient_GroqDispatch(t *testing.T) {
 
 	if resp.Text != "Groq fast response: syntax error" {
 		t.Errorf("unexpected response: %q", resp.Text)
+	}
+}
+
+func TestMultiProviderClient_PIIScrubbingNotesAndTelemetry(t *testing.T) {
+	var capturedBody string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		bodyBytes, _ := io.ReadAll(r.Body)
+		capturedBody = string(bodyBytes)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"choices":[{"message":{"content":"ok"}}]}`))
+	}))
+	defer ts.Close()
+
+	tempDir, _ := os.MkdirTemp("", "ai_scrub_test_*")
+	defer os.RemoveAll(tempDir)
+	store, _ := db.NewStore(filepath.Join(tempDir, "test.db"))
+	defer store.Close()
+
+	store.SetSetting("api_key_openrouter", "test-key")
+	client := ai.NewMultiProviderClient(store)
+	client.SetOpenRouterEndpoint(ts.URL)
+
+	req := ai.AIRequest{
+		Provider:  "openrouter",
+		Model:     "anthropic/claude-3.5-sonnet",
+		Prompt:    "Log with IP 192.168.1.50",
+		UserNotes: "User secret: sk-12345678901234567890123456789012 and email admin@company.com",
+		Telemetry: "Host IP: 10.0.0.99",
+	}
+
+	_, err := client.Query(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Query failed: %v", err)
+	}
+
+	if strings.Contains(capturedBody, "192.168.1.50") || strings.Contains(capturedBody, "admin@company.com") || strings.Contains(capturedBody, "10.0.0.99") {
+		t.Errorf("Captured body contains unscrubbed PII: %s", capturedBody)
 	}
 }

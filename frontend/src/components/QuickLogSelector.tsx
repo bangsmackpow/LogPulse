@@ -22,7 +22,12 @@ const KNOWN_APPS: KnownAppDefinition[] = [
   {
     id: 'vscode',
     name: 'Visual Studio Code',
-    matcher: (p, a) => p.toLowerCase().includes('code') || a.toLowerCase().includes('code'),
+    matcher: (p, a) =>
+      p.toLowerCase().includes('vscode') ||
+      p.toLowerCase().includes('.vscode') ||
+      p.toLowerCase().includes('code\\logs') ||
+      p.toLowerCase().includes('code/logs') ||
+      a.toLowerCase() === 'code',
   },
   {
     id: 'slack',

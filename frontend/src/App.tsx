@@ -239,7 +239,7 @@ export default function App() {
               ? () => window.go?.main?.App?.RevealInExplorer(contextMenu.filePath!)
               : undefined
           }
-          onAddMarker={() => addMarker(`Mark @ line ${contextMenu.lineIndex || lines.length}`)}
+          onAddMarker={() => addMarker(`Mark @ line ${contextMenu.lineIndex ?? lines.length}`)}
         />
       )}
 

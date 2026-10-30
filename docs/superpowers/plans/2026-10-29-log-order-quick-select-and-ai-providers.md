@@ -1,6 +1,6 @@
 # Log Display Ordering, Quick Known Logs Selector, and Expanded AI Providers Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Implement "Newest at top" log ordering, a Quick Known Logs dropdown with multi-file stream fusion, and universal AI provider support (OpenRouter.ai, DeepSeek, Groq) with custom model selection.
 
@@ -43,27 +43,27 @@
 - Consumes: `ai.MultiProviderClient`, `ai.ScrubPII`, `db.Store`
 - Produces: `client.Investigate(ctx, provider, model, prompt)` supporting providers: `"openrouter"`, `"deepseek"`, `"groq"`, `"openai"`, `"anthropic"`, `"gemini"`, `"ollama"`.
 
-- [ ] **Step 1: Write failing unit tests for new AI providers**
+- [x] **Step 1: Write failing unit tests for new AI providers**
   In `internal/ai/client_test.go`, add unit tests verifying:
   - OpenRouter request formatting, base URL `https://openrouter.ai/api/v1`, and custom headers (`HTTP-Referer`, `X-Title`).
   - DeepSeek base URL `https://api.deepseek.com/v1` and endpoint routing.
   - Groq base URL `https://api.groq.com/openai/v1`.
   - PII scrubbing runs before dispatch on all three providers.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   Run: `go test -v ./internal/ai -run "TestOpenRouter|TestDeepSeek|TestGroq"`
   Expected: FAIL with unsupported provider error.
 
-- [ ] **Step 3: Implement OpenRouter, DeepSeek, and Groq dispatcher in `internal/ai/client.go` and tokenizer in `internal/ai/tokenizer.go`**
+- [x] **Step 3: Implement OpenRouter, DeepSeek, and Groq dispatcher in `internal/ai/client.go` and tokenizer in `internal/ai/tokenizer.go`**
   - In `client.go`, map provider base URLs and authorization headers.
   - In `tokenizer.go`, add cost estimation rates for OpenRouter presets (e.g. `$0.003/1k` input, `$0.015/1k` output for Claude 3.5 Sonnet, `$0.0005/1k` for DeepSeek R1).
   - Update `EstimateCost(provider, model, prompt)` to handle new provider strings.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   Run: `go test -v ./internal/ai/...`
   Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add internal/ai/
   git commit -m "feat(ai): add OpenRouter, DeepSeek, and Groq dispatchers with token pricing"
@@ -83,7 +83,7 @@
 - Consumes: `useLogStore`, `VirtualizedGrid`
 - Produces: `useLogStore.isNewestOnTop`, `useLogStore.setNewestOnTop(val: boolean)`
 
-- [ ] **Step 1: Add `isNewestOnTop` to `useLogStore.ts`**
+- [x] **Step 1: Add `isNewestOnTop` to `useLogStore.ts`**
   Add state and action to `useLogStore`:
   ```ts
   isNewestOnTop: boolean;
@@ -91,7 +91,7 @@
   ```
   Default `isNewestOnTop: false`. Persist in `localStorage.getItem('logpulse_newest_on_top')`.
 
-- [ ] **Step 2: Add top-bar toggle in `frontend/src/App.tsx`**
+- [x] **Step 2: Add top-bar toggle in `frontend/src/App.tsx`**
   To the right of the level filters (`ERROR`, `WARN`, `INFO`, `DEBUG`), add:
   ```tsx
   <label className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-canvas-900 border border-canvas-700 text-xs text-gray-300 cursor-pointer hover:border-canvas-600 transition-colors">
@@ -105,7 +105,7 @@
   </label>
   ```
 
-- [ ] **Step 3: Update row mapping and auto-scroll in `VirtualizedGrid.tsx`**
+- [x] **Step 3: Update row mapping and auto-scroll in `VirtualizedGrid.tsx`**
   - Read `isNewestOnTop` from `useLogStore`.
   - In `rowVirtualizer`, when `isNewestOnTop` is true:
     - Map virtual item index `virtualRow.index` to underlying index `rawIndex = lines.length - 1 - virtualRow.index`.
@@ -115,11 +115,11 @@
     - When `isNewestOnTop` is false: if scrolled near bottom, `scrollToOffset(totalHeight)` on new lines.
     - When `isNewestOnTop` is true: if scrolled near top (`scrollTop < 40`), `scrollToOffset(0)` on new lines.
 
-- [ ] **Step 4: Verify typecheck & build**
+- [x] **Step 4: Verify typecheck & build**
   Run: `npm --prefix frontend run build`
   Expected: Clean build without TypeScript errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add frontend/src/stores/useLogStore.ts frontend/src/App.tsx frontend/src/components/VirtualizedGrid.tsx
   git commit -m "feat(ui): add Newest at top order toggle with pinned top-down virtualization"
@@ -140,14 +140,14 @@
 - Consumes: `useLogStore.logs`, `useLogStore.selectLog`, `useLogStore.activeTailedPaths`, `window.go.main.App.StopTail`
 - Produces: `QuickLogSelector` dropdown component, multi-file source pill rendering in `VirtualizedGrid`.
 
-- [ ] **Step 1: Implement tail replacement action in `useLogStore.ts`**
+- [x] **Step 1: Implement tail replacement action in `useLogStore.ts`**
   Add store action `switchActiveTails(newPaths: string[], groupLabel?: string)`:
   - For any path currently in `activeTailedPaths` that is NOT in `newPaths`, invoke `window.go?.main?.App?.StopTail(path)`.
   - Set `activeTailedPaths = new Set(newPaths)`.
   - Set `lines: []`.
   - If `groupLabel` is provided, create a synthetic `selectedLog` representing the multi-file group (e.g. `{ filePath: groupLabel, appName: groupLabel }`).
 
-- [ ] **Step 2: Create `QuickLogSelector.tsx`**
+- [x] **Step 2: Create `QuickLogSelector.tsx`**
   Build component with categorized presets:
   - Windows Event Logs:
     - Windows System (`*System.evtx`)
@@ -158,10 +158,10 @@
     - If 1 file: selects directly.
     - If multiple files (Option C): calls `switchActiveTails(allMatchingPaths, `${app} (${count} files)`)`, triggering simultaneous stream multiplexing.
 
-- [ ] **Step 3: Integrate `QuickLogSelector` in `App.tsx`**
+- [x] **Step 3: Integrate `QuickLogSelector` in `App.tsx`**
   Mount `QuickLogSelector` right next to the regex search input in the header bar.
 
-- [ ] **Step 4: Add file pill badge in `VirtualizedGrid.tsx`**
+- [x] **Step 4: Add file pill badge in `VirtualizedGrid.tsx`**
   When `activeTailedPaths.size > 1`:
   - Extract basename of `line.fileId` (e.g. `main.log`, `renderer.log`, `System.evtx`).
   - Render a compact colored badge next to the timestamp:
@@ -171,11 +171,11 @@
     </span>
     ```
 
-- [ ] **Step 5: Verify typecheck & build**
+- [x] **Step 5: Verify typecheck & build**
   Run: `npm --prefix frontend run build`
   Expected: Clean build without errors.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
   ```bash
   git add frontend/src/components/QuickLogSelector.tsx frontend/src/stores/useLogStore.ts frontend/src/hooks/useLogStream.ts frontend/src/App.tsx frontend/src/components/VirtualizedGrid.tsx
   git commit -m "feat(ui): add QuickLogSelector with multi-file interleaved streaming"
@@ -195,31 +195,31 @@
 - Consumes: `window.go.main.App.GetSettings`, `window.go.main.App.SaveSettings`, `window.go.main.App.InvestigateWithAI`
 - Produces: OpenRouter, DeepSeek, and Groq configuration UI, custom model ID support.
 
-- [ ] **Step 1: Update frontend types in `frontend/src/types.ts`**
+- [x] **Step 1: Update frontend types in `frontend/src/types.ts`**
   Update `AIProvider` type:
   ```ts
   export type AIProvider = 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'openrouter' | 'deepseek' | 'groq';
   ```
 
-- [ ] **Step 2: Update `SettingsModal.tsx`**
+- [x] **Step 2: Update `SettingsModal.tsx`**
   - Add API key input fields for:
     - OpenRouter API Key (`api_key_openrouter`)
     - DeepSeek API Key (`api_key_deepseek`)
     - Groq API Key (`api_key_groq`)
   - Add OpenRouter, DeepSeek, and Groq to the default provider dropdown.
 
-- [ ] **Step 3: Update `AIModal.tsx` with OpenRouter & Custom Model Support**
+- [x] **Step 3: Update `AIModal.tsx` with OpenRouter & Custom Model Support**
   - Add tabs or select dropdown for OpenRouter, DeepSeek, and Groq.
   - When OpenRouter is selected:
     - Display preset dropdown: `anthropic/claude-3.5-sonnet`, `openai/gpt-4o`, `deepseek/deepseek-r1`, `deepseek/deepseek-chat`, `meta-llama/llama-3.3-70b-instruct`, `mistralai/mistral-large-2411`, `custom`.
     - If `custom` selected, show text input for arbitrary OpenRouter model ID.
   - Update `EstimateCost` and `InvestigateWithAI` calls to pass the selected provider and model.
 
-- [ ] **Step 4: Verify typecheck & build**
+- [x] **Step 4: Verify typecheck & build**
   Run: `npm --prefix frontend run build`
   Expected: Clean build without errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   ```bash
   git add frontend/src/types.ts frontend/src/components/SettingsModal.tsx frontend/src/components/AIModal.tsx app.go
   git commit -m "feat(ai): add OpenRouter, DeepSeek, and Groq configuration and model selection UI"
@@ -232,20 +232,21 @@
 **Files:**
 - All modified backend & frontend files.
 
-- [ ] **Step 1: Run complete Go test suite**
+- [x] **Step 1: Run complete Go test suite**
   Run: `go test -v ./...`
   Expected: All unit tests pass 100%.
 
-- [ ] **Step 2: Run frontend production build**
+- [x] **Step 2: Run frontend production build**
   Run: `cd frontend && npm run build`
   Expected: Vite build succeeds with all chunks and workers generated.
 
-- [ ] **Step 3: Compile desktop binary**
+- [x] **Step 3: Compile desktop binary**
   Run: `wails build -s`
   Expected: `build/bin/logpulse.exe` compiles cleanly.
 
-- [ ] **Step 4: Commit and finalize**
+- [x] **Step 4: Commit and finalize**
   ```bash
   git add .
   git commit -m "chore: complete log order, quick selector, and expanded AI provider features"
   ```
+

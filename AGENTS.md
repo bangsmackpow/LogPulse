@@ -23,7 +23,8 @@ LogPulse is a high-performance cross-platform desktop log discovery and diagnost
    - Active logs are frequently locked, rolled, or deleted by running services.
    - Always open files with `windows.FILE_SHARE_READ | windows.FILE_SHARE_WRITE | windows.FILE_SHARE_DELETE` (see `internal/tailer/tailer_windows.go`).
 5. **Mandatory Pre-Flight PII Redaction:**
-   - No log text may be dispatched to external AI providers (OpenAI, Anthropic, Gemini) without first running through `internal/ai/scrubber.go`.
+   - No log text may be dispatched to external AI providers (OpenRouter, DeepSeek, Groq, OpenAI, Anthropic, Gemini) without first running through `internal/ai/scrubber.go`.
+   - All input fields (`Prompt`, `UserNotes`, `Telemetry`) must be scrubbed before network dispatch.
    - Monthly budget ceilings stored in SQLite (`monthly_budget_usd`) must be strictly honored before dispatching outbound HTTP calls.
 6. **CGO-Free Persistence:**
    - Use `modernc.org/sqlite` with `PRAGMA journal_mode=WAL;`. Do not introduce dependencies requiring CGO (such as `mattn/go-sqlite3`).
@@ -40,7 +41,7 @@ logpulse/
 ├── build/                       # App packaging assets (appicon.png, binaries)
 ├── frontend/                    # Vite + React 18 + TypeScript + Tailwind CSS
 │   ├── src/
-│   │   ├── components/          # VirtualizedGrid, LogTree, ContextMenu, AIModal, SessionControl
+│   │   ├── components/          # VirtualizedGrid, QuickLogSelector, LogTree, ContextMenu, AIModal, SessionControl
 │   │   ├── hooks/               # useLogStream (Wails event listeners)
 │   │   ├── stores/              # Zustand state (useLogStore, useAIStore)
 │   │   ├── workers/             # searchWorker.ts (off-thread regex filtering)
@@ -50,7 +51,7 @@ logpulse/
 │   └── vite.config.ts
 ├── internal/
 │   ├── ai/                      # Multi-provider client, PII scrubber, token heuristics
-│   │   ├── client.go            # Ollama, OpenAI, Anthropic, Gemini dispatcher
+│   │   ├── client.go            # OpenRouter, DeepSeek, Groq, Ollama, OpenAI, Anthropic, Gemini dispatcher
 │   │   ├── scrubber.go          # Regex redactor (IPv4/v6, JWT, API keys, emails)
 │   │   └── tokenizer.go         # BPE estimation & USD cost calculation
 │   ├── db/                      # Pure-Go SQLite persistence & WAL migrations
@@ -117,18 +118,20 @@ wails dev
 - Log lines in `useLogStore` can grow up to 250,000 items in memory (`MAX_BUFFER = 250000`).
 - The `searchWorker.ts` Web Worker handles all regex matching and level filtering off the main UI thread.
 - Always debounce or throttle messages sent to `searchWorker.ts` (e.g. 80–100ms) to avoid cloning massive arrays repeatedly during rapid log bursts.
+- **Reverse Chronological Inversion:** When `isNewestOnTop` is true, virtual rows map to `filteredIndices[filteredIndices.length - 1 - virtualRow.index]`. Auto-scroll pins to offset 0 instead of the bottom. Context menu interactions must always preserve the original underlying index for accurate surrounding context lines and PII scrubbing.
 
-### Troubleshooting Session Multiplexing
+### Troubleshooting Session & Multi-Log Multiplexing
 - When the user starts a session (`isSessionActive: true`), dropping markers records a timeline pin with the line number.
-- Selecting multiple logs with `Ctrl+Click` / `Cmd+Click` in `LogTree.tsx` adds paths to `activeTailedPaths`, streaming interleaved lines chronologically into the virtual grid.
+- Selecting multiple logs with `Ctrl+Click` / `Cmd+Click` in `LogTree.tsx` or picking multi-file apps in `QuickLogSelector.tsx` adds paths to `activeTailedPaths`, streaming interleaved lines chronologically into the virtual grid with compact file pill badges.
+- When switching active log paths, existing tails must be stopped via `App.StopTail(oldPath)` to release file handles.
 
 ---
 
 ## 5. Security & PII Redaction Rules
 
-- All API keys (`api_key_openai`, `api_key_anthropic`, `api_key_gemini`) are stored exclusively in the local embedded SQLite database (`settings` table) on the user's workstation.
+- All API keys (`api_key_openrouter`, `api_key_deepseek`, `api_key_groq`, `api_key_openai`, `api_key_anthropic`, `api_key_gemini`) are stored exclusively in the local embedded SQLite database (`settings` table) on the user's workstation.
 - When an AI investigation is initiated:
-  1. `App.InvestigateWithAI` automatically runs `ai.ScrubPII` on the prompt.
+  1. `App.InvestigateWithAI` and `MultiProviderClient.Query` automatically run `ai.ScrubPII` across `Prompt`, `UserNotes`, and `Telemetry`.
   2. The frontend shows a side-by-side diff preview (`PIIScrubberDiff.tsx`).
   3. Spend is calculated and recorded in `ai_accounting`.
   4. If monthly spend exceeds `monthly_budget_usd`, requests are blocked immediately with a descriptive error.

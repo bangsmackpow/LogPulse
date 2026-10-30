@@ -4,11 +4,11 @@ import {db} from '../models';
 import {ai} from '../models';
 import {main} from '../models';
 
-export function EstimateCost(arg1:string,arg2:string,arg3:string):Promise<{[key: string]: any}>;
+export function EstimateCost(arg1:string,arg2:string,arg3:string):Promise<Record<string, any>>;
 
 export function GetDiscoveredLogs():Promise<Array<db.DiscoveredLog>>;
 
-export function GetSettings():Promise<{[key: string]: string}>;
+export function GetSettings():Promise<Record<string, string>>;
 
 export function GetStore():Promise<db.Store>;
 
@@ -20,7 +20,7 @@ export function RefreshLogs():Promise<Array<db.DiscoveredLog>>;
 
 export function RevealInExplorer(arg1:string):Promise<void>;
 
-export function SaveSettings(arg1:{[key: string]: string}):Promise<void>;
+export function SaveSettings(arg1:Record<string, string>):Promise<void>;
 
 export function ScrubText(arg1:string):Promise<main.ScrubResult>;
 

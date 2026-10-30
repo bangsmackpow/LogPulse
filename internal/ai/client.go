@@ -30,9 +30,12 @@ type AIResponse struct {
 }
 
 type MultiProviderClient struct {
-	store          *db.Store
-	httpClient     *http.Client
-	ollamaEndpoint string
+	store              *db.Store
+	httpClient         *http.Client
+	ollamaEndpoint     string
+	openRouterEndpoint string
+	deepSeekEndpoint   string
+	groqEndpoint       string
 }
 
 func NewMultiProviderClient(store *db.Store) *MultiProviderClient {
@@ -41,12 +44,27 @@ func NewMultiProviderClient(store *db.Store) *MultiProviderClient {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		ollamaEndpoint: "http://localhost:11434",
+		ollamaEndpoint:     "http://localhost:11434",
+		openRouterEndpoint: "https://openrouter.ai/api/v1",
+		deepSeekEndpoint:   "https://api.deepseek.com/v1",
+		groqEndpoint:       "https://api.groq.com/openai/v1",
 	}
 }
 
 func (c *MultiProviderClient) SetOllamaEndpoint(endpoint string) {
 	c.ollamaEndpoint = strings.TrimRight(endpoint, "/")
+}
+
+func (c *MultiProviderClient) SetOpenRouterEndpoint(endpoint string) {
+	c.openRouterEndpoint = strings.TrimRight(endpoint, "/")
+}
+
+func (c *MultiProviderClient) SetDeepSeekEndpoint(endpoint string) {
+	c.deepSeekEndpoint = strings.TrimRight(endpoint, "/")
+}
+
+func (c *MultiProviderClient) SetGroqEndpoint(endpoint string) {
+	c.groqEndpoint = strings.TrimRight(endpoint, "/")
 }
 
 func (c *MultiProviderClient) Query(ctx context.Context, req AIRequest) (*AIResponse, error) {
@@ -86,6 +104,12 @@ func (c *MultiProviderClient) Query(ctx context.Context, req AIRequest) (*AIResp
 		responseText, err = c.queryAnthropic(ctx, req.Model, fullPrompt)
 	case "gemini":
 		responseText, err = c.queryGemini(ctx, req.Model, fullPrompt)
+	case "openrouter":
+		responseText, err = c.queryOpenRouter(ctx, req.Model, fullPrompt)
+	case "deepseek":
+		responseText, err = c.queryDeepSeek(ctx, req.Model, fullPrompt)
+	case "groq":
+		responseText, err = c.queryGroq(ctx, req.Model, fullPrompt)
 	default:
 		// Default fallback to Ollama
 		responseText, err = c.queryOllama(ctx, req.Model, fullPrompt)
@@ -176,7 +200,59 @@ func (c *MultiProviderClient) queryOpenAI(ctx context.Context, model, prompt str
 	if model == "" {
 		model = "gpt-4o"
 	}
+	return c.queryOpenAICompatible(ctx, "https://api.openai.com/v1/chat/completions", apiKey, model, prompt, nil)
+}
 
+func (c *MultiProviderClient) queryOpenRouter(ctx context.Context, model, prompt string) (string, error) {
+	var apiKey string
+	if c.store != nil {
+		apiKey, _ = c.store.GetSetting("api_key_openrouter")
+	}
+	if apiKey == "" {
+		return "", fmt.Errorf("OpenRouter API key not configured")
+	}
+	if model == "" {
+		model = "anthropic/claude-3.5-sonnet"
+	}
+	headers := map[string]string{
+		"HTTP-Referer": "https://github.com/bangsmackpow/LogPulse",
+		"X-Title":      "LogPulse",
+	}
+	endpoint := c.openRouterEndpoint + "/chat/completions"
+	return c.queryOpenAICompatible(ctx, endpoint, apiKey, model, prompt, headers)
+}
+
+func (c *MultiProviderClient) queryDeepSeek(ctx context.Context, model, prompt string) (string, error) {
+	var apiKey string
+	if c.store != nil {
+		apiKey, _ = c.store.GetSetting("api_key_deepseek")
+	}
+	if apiKey == "" {
+		return "", fmt.Errorf("DeepSeek API key not configured")
+	}
+	if model == "" {
+		model = "deepseek-reasoner"
+	}
+	endpoint := c.deepSeekEndpoint + "/chat/completions"
+	return c.queryOpenAICompatible(ctx, endpoint, apiKey, model, prompt, nil)
+}
+
+func (c *MultiProviderClient) queryGroq(ctx context.Context, model, prompt string) (string, error) {
+	var apiKey string
+	if c.store != nil {
+		apiKey, _ = c.store.GetSetting("api_key_groq")
+	}
+	if apiKey == "" {
+		return "", fmt.Errorf("Groq API key not configured")
+	}
+	if model == "" {
+		model = "llama-3.3-70b-versatile"
+	}
+	endpoint := c.groqEndpoint + "/chat/completions"
+	return c.queryOpenAICompatible(ctx, endpoint, apiKey, model, prompt, nil)
+}
+
+func (c *MultiProviderClient) queryOpenAICompatible(ctx context.Context, endpoint, apiKey, model, prompt string, extraHeaders map[string]string) (string, error) {
 	payload := map[string]interface{}{
 		"model": model,
 		"messages": []map[string]string{
@@ -185,13 +261,20 @@ func (c *MultiProviderClient) queryOpenAI(ctx context.Context, model, prompt str
 		},
 	}
 
-	body, _ := json.Marshal(payload)
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", "https://api.openai.com/v1/chat/completions", bytes.NewReader(body))
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
 	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
 	httpReq.Header.Set("Content-Type", "application/json")
+	for k, v := range extraHeaders {
+		httpReq.Header.Set(k, v)
+	}
 
 	res, err := c.httpClient.Do(httpReq)
 	if err != nil {
@@ -201,7 +284,7 @@ func (c *MultiProviderClient) queryOpenAI(ctx context.Context, model, prompt str
 
 	if res.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(res.Body)
-		return "", fmt.Errorf("OpenAI API error (%d): %s", res.StatusCode, string(respBytes))
+		return "", fmt.Errorf("API error (status %d): %s", res.StatusCode, string(respBytes))
 	}
 
 	var parsed struct {
@@ -211,13 +294,15 @@ func (c *MultiProviderClient) queryOpenAI(ctx context.Context, model, prompt str
 			} `json:"message"`
 		} `json:"choices"`
 	}
+
 	if err := json.NewDecoder(res.Body).Decode(&parsed); err != nil {
 		return "", err
 	}
+
 	if len(parsed.Choices) > 0 {
 		return parsed.Choices[0].Message.Content, nil
 	}
-	return "", fmt.Errorf("empty OpenAI response")
+	return "", fmt.Errorf("empty API response")
 }
 
 func (c *MultiProviderClient) queryAnthropic(ctx context.Context, model, prompt string) (string, error) {

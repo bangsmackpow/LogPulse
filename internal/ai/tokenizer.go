@@ -47,6 +47,18 @@ func CalculateCostUSD(provider, model string, inTokens, outTokens int) float64 {
 	case strings.Contains(modelLower, "gemini-1.5-pro"):
 		inPricePerMillion = 1.25
 		outPricePerMillion = 5.00
+	case strings.Contains(modelLower, "deepseek-reasoner") || strings.Contains(modelLower, "deepseek-r1"):
+		inPricePerMillion = 0.55
+		outPricePerMillion = 2.19
+	case strings.Contains(modelLower, "deepseek-chat") || strings.Contains(modelLower, "deepseek-v3"):
+		inPricePerMillion = 0.14
+		outPricePerMillion = 0.28
+	case strings.Contains(modelLower, "llama-3.3") || strings.Contains(modelLower, "llama-3-"):
+		inPricePerMillion = 0.59
+		outPricePerMillion = 0.79
+	case strings.Contains(modelLower, "mixtral"):
+		inPricePerMillion = 0.24
+		outPricePerMillion = 0.24
 	default:
 		// Default estimation for unknown modern LLM
 		inPricePerMillion = 1.00

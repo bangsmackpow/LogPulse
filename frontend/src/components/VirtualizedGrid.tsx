@@ -16,8 +16,10 @@ export const VirtualizedGrid: React.FC<VirtualizedGridProps> = ({
   onQuickInvestigate,
 }) => {
   const parentRef = useRef<HTMLDivElement>(null);
-  const { filterLevel, searchTerm, markers } = useLogStore();
+  const { filterLevel, searchTerm, markers, isNewestOnTop } = useLogStore();
   const [filteredIndices, setFilteredIndices] = useState<number[]>([]);
+  const isAtTopRef = useRef(true);
+  const isAtBottomRef = useRef(true);
 
   // Search Web Worker instance
   const workerRef = useRef<Worker | null>(null);
@@ -79,6 +81,25 @@ export const VirtualizedGrid: React.FC<VirtualizedGridProps> = ({
     overscan: 25,
   });
 
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    isAtTopRef.current = target.scrollTop <= 40;
+    isAtBottomRef.current = target.scrollHeight - target.scrollTop - target.clientHeight <= 40;
+  };
+
+  useEffect(() => {
+    if (!parentRef.current || filteredIndices.length === 0) return;
+    if (isNewestOnTop) {
+      if (isAtTopRef.current) {
+        rowVirtualizer.scrollToOffset(0);
+      }
+    } else {
+      if (isAtBottomRef.current) {
+        rowVirtualizer.scrollToIndex(filteredIndices.length - 1);
+      }
+    }
+  }, [lines.length, isNewestOnTop, filteredIndices.length]);
+
   const highlightMatches = (text: string) => {
     if (!searchRegex) return text;
     const parts = text.split(searchRegex);
@@ -96,6 +117,7 @@ export const VirtualizedGrid: React.FC<VirtualizedGridProps> = ({
   return (
     <div
       ref={parentRef}
+      onScroll={handleScroll}
       className="relative h-full w-full overflow-auto bg-canvas-900 font-mono text-xs select-text"
       style={{ contain: 'strict' }}
     >
@@ -107,7 +129,9 @@ export const VirtualizedGrid: React.FC<VirtualizedGridProps> = ({
         }}
       >
         {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-          const originalIndex = filteredIndices[virtualRow.index];
+          const originalIndex = isNewestOnTop
+            ? filteredIndices[filteredIndices.length - 1 - virtualRow.index]
+            : filteredIndices[virtualRow.index];
           const line = lines[originalIndex];
           if (!line) return null;
 

@@ -29,7 +29,9 @@ export default function App() {
     setSearchTerm, 
     isSessionActive, 
     setSessionActive, 
-    addMarker 
+    addMarker,
+    isNewestOnTop,
+    setNewestOnTop 
   } = useLogStore();
 
   const [showSettings, setShowSettings] = useState(false);
@@ -133,6 +135,17 @@ export default function App() {
               );
             })}
           </div>
+
+          {/* Newest at top order toggle */}
+          <label className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-canvas-900 border border-canvas-700 text-xs text-gray-300 cursor-pointer hover:border-canvas-600 transition-colors select-none">
+            <input
+              type="checkbox"
+              checked={isNewestOnTop}
+              onChange={(e) => setNewestOnTop(e.target.checked)}
+              className="accent-indigo-500 rounded cursor-pointer h-3.5 w-3.5"
+            />
+            <span className="font-mono text-[11px]">Newest at top</span>
+          </label>
 
           {/* Troubleshooting Session Controls */}
           <button

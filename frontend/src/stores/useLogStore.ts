@@ -10,6 +10,7 @@ interface LogState {
   searchTerm: string;
   markers: SessionMarker[];
   isSessionActive: boolean;
+  isNewestOnTop: boolean;
 
   setLogs: (logs: DiscoveredLog[]) => void;
   addDiscoveredLog: (log: DiscoveredLog) => void;
@@ -21,6 +22,7 @@ interface LogState {
   setSearchTerm: (term: string) => void;
   addMarker: (label: string) => void;
   setSessionActive: (active: boolean) => void;
+  setNewestOnTop: (val: boolean) => void;
 }
 
 const MAX_BUFFER = 250000;
@@ -34,8 +36,15 @@ export const useLogStore = create<LogState>((set) => ({
   searchTerm: '',
   markers: [],
   isSessionActive: false,
+  isNewestOnTop: typeof window !== 'undefined' && localStorage.getItem('logpulse_newest_on_top') === 'true',
 
   setLogs: (logs) => set({ logs }),
+  setNewestOnTop: (val) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('logpulse_newest_on_top', String(val));
+    }
+    set({ isNewestOnTop: val });
+  },
   addDiscoveredLog: (log) =>
     set((state) => {
       const exists = state.logs.some((l) => l.filePath === log.filePath);

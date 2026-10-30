@@ -23,6 +23,7 @@ interface LogState {
   addMarker: (label: string) => void;
   setSessionActive: (active: boolean) => void;
   setNewestOnTop: (val: boolean) => void;
+  switchActiveTails: (newPaths: string[], groupLabel?: string) => void;
 }
 
 const MAX_BUFFER = 250000;
@@ -70,6 +71,50 @@ export const useLogStore = create<LogState>((set) => ({
       return {
         selectedLog: log,
         activeTailedPaths: active,
+      };
+    }),
+
+  switchActiveTails: (newPaths, groupLabel) =>
+    set((state) => {
+      const newSet = new Set(newPaths);
+      // Clean up previous tails
+      state.activeTailedPaths.forEach((oldPath) => {
+        if (!newSet.has(oldPath) && window.go?.main?.App?.StopTail) {
+          window.go.main.App.StopTail(oldPath).catch((err) => {
+            console.error('Failed to stop tail:', oldPath, err);
+          });
+        }
+      });
+
+      let targetLog: DiscoveredLog | null = null;
+      if (newPaths.length === 1) {
+        targetLog = state.logs.find((l) => l.filePath === newPaths[0]) || {
+          id: -1,
+          filePath: newPaths[0],
+          appName: groupLabel || 'Log',
+          format: 'text',
+          fileSize: 0,
+          lastModified: new Date().toISOString(),
+          isFavorite: false,
+          tag: 'active',
+        };
+      } else if (newPaths.length > 1) {
+        targetLog = {
+          id: -1,
+          filePath: groupLabel || `${newPaths.length} Active Streams`,
+          appName: groupLabel || 'Multi-Tail',
+          format: 'multiplex',
+          fileSize: 0,
+          lastModified: new Date().toISOString(),
+          isFavorite: false,
+          tag: 'multiplex',
+        };
+      }
+
+      return {
+        selectedLog: targetLog,
+        activeTailedPaths: newSet,
+        lines: [],
       };
     }),
 

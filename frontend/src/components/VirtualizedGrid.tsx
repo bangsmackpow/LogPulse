@@ -16,7 +16,7 @@ export const VirtualizedGrid: React.FC<VirtualizedGridProps> = ({
   onQuickInvestigate,
 }) => {
   const parentRef = useRef<HTMLDivElement>(null);
-  const { filterLevel, searchTerm, markers, isNewestOnTop } = useLogStore();
+  const { filterLevel, searchTerm, markers, isNewestOnTop, activeTailedPaths } = useLogStore();
   const [filteredIndices, setFilteredIndices] = useState<number[]>([]);
   const isAtTopRef = useRef(true);
   const isAtBottomRef = useRef(true);
@@ -180,6 +180,16 @@ export const VirtualizedGrid: React.FC<VirtualizedGridProps> = ({
               >
                 {line.level}
               </div>
+
+              {/* Source File Badge (Multi-Tail Stream Multiplexing) */}
+              {activeTailedPaths.size > 1 && line.fileId && (
+                <div
+                  className="shrink-0 mx-1 px-1.5 py-0.5 rounded bg-indigo-950/70 border border-indigo-800/50 text-[9px] text-indigo-300 font-mono select-none max-w-[130px] truncate"
+                  title={line.fileId}
+                >
+                  {line.fileId.split(/[/\\]/).pop()}
+                </div>
+              )}
 
               {/* Raw Log Line Content */}
               <div className="flex-1 overflow-hidden truncate px-2 text-gray-200">

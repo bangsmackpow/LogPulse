@@ -14,6 +14,7 @@ import { ContextMenu } from './components/ContextMenu';
 import { AIModal } from './components/AIModal';
 import { SettingsModal } from './components/SettingsModal';
 import { SessionControl } from './components/SessionControl';
+import { QuickLogSelector } from './components/QuickLogSelector';
 import { DiscoveredLog, LogLine } from './types';
 
 export default function App() {
@@ -99,6 +100,8 @@ export default function App() {
 
         {/* Global Search & Filters */}
         <div className="flex items-center gap-3">
+          <QuickLogSelector />
+
           <div className="relative">
             <Search className="absolute left-2.5 top-2 h-4 w-4 text-gray-400" />
             <input
@@ -106,7 +109,7 @@ export default function App() {
               placeholder="Regex search lines..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-8 w-64 rounded bg-canvas-900 pl-8 pr-3 text-xs text-gray-200 placeholder-gray-500 border border-canvas-600 focus:border-indigo-500 focus:outline-none font-mono"
+              className="h-8 w-60 rounded bg-canvas-900 pl-8 pr-3 text-xs text-gray-200 placeholder-gray-500 border border-canvas-600 focus:border-indigo-500 focus:outline-none font-mono"
             />
           </div>
 

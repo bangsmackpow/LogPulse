@@ -13,6 +13,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [openaiKey, setOpenaiKey] = useState('');
   const [anthropicKey, setAnthropicKey] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
+  const [openrouterKey, setOpenrouterKey] = useState('');
+  const [deepseekKey, setDeepseekKey] = useState('');
+  const [groqKey, setGroqKey] = useState('');
   const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434');
   const [budgetLimit, setBudgetLimit] = useState('10.00');
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -25,6 +28,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         if (s.api_key_openai) setOpenaiKey(s.api_key_openai);
         if (s.api_key_anthropic) setAnthropicKey(s.api_key_anthropic);
         if (s.api_key_gemini) setGeminiKey(s.api_key_gemini);
+        if (s.api_key_openrouter) setOpenrouterKey(s.api_key_openrouter);
+        if (s.api_key_deepseek) setDeepseekKey(s.api_key_deepseek);
+        if (s.api_key_groq) setGroqKey(s.api_key_groq);
         if (s.ollama_endpoint) setOllamaUrl(s.ollama_endpoint);
         if (s.monthly_budget_usd) {
           setBudgetLimit(s.monthly_budget_usd);
@@ -43,6 +49,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       api_key_openai: openaiKey,
       api_key_anthropic: anthropicKey,
       api_key_gemini: geminiKey,
+      api_key_openrouter: openrouterKey,
+      api_key_deepseek: deepseekKey,
+      api_key_groq: groqKey,
       ollama_endpoint: ollamaUrl,
       monthly_budget_usd: budgetLimit,
     };
@@ -84,13 +93,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 if (val === 'openai') setModel('gpt-4o');
                 if (val === 'anthropic') setModel('claude-3-5-sonnet-20241022');
                 if (val === 'gemini') setModel('gemini-1.5-flash');
+                if (val === 'openrouter') setModel('anthropic/claude-3.5-sonnet');
+                if (val === 'deepseek') setModel('deepseek-reasoner');
+                if (val === 'groq') setModel('llama-3.3-70b-versatile');
               }}
               className="w-full h-8 rounded bg-canvas-900 border border-canvas-600 px-2 text-xs text-white focus:outline-none focus:border-indigo-500"
             >
-              <option value="ollama">Ollama (Local / Free)</option>
+              <option value="openrouter">OpenRouter.ai (100+ Models via 1 Key)</option>
+              <option value="deepseek">DeepSeek (R1 Reasoner / V3 Chat)</option>
+              <option value="groq">Groq (Ultra-Fast Inference)</option>
               <option value="openai">OpenAI (GPT-4o / GPT-4o-mini)</option>
               <option value="anthropic">Anthropic (Claude 3.5 Sonnet)</option>
               <option value="gemini">Google Gemini (Gemini 1.5/2.0)</option>
+              <option value="ollama">Ollama (Local / Free)</option>
             </select>
           </div>
 
@@ -165,6 +180,54 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 value={geminiKey}
                 onChange={(e) => setGeminiKey(e.target.value)}
                 placeholder="AIzaSy..."
+                className="w-full h-8 rounded bg-canvas-900 border border-canvas-600 px-2.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+          )}
+
+          {provider === 'openrouter' && (
+            <div>
+              <label className="block font-medium text-gray-300 mb-1 flex items-center gap-1.5">
+                <Key className="h-3.5 w-3.5 text-indigo-400" />
+                <span>OpenRouter API Key</span>
+              </label>
+              <input
+                type="password"
+                value={openrouterKey}
+                onChange={(e) => setOpenrouterKey(e.target.value)}
+                placeholder="sk-or-v1-..."
+                className="w-full h-8 rounded bg-canvas-900 border border-canvas-600 px-2.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+          )}
+
+          {provider === 'deepseek' && (
+            <div>
+              <label className="block font-medium text-gray-300 mb-1 flex items-center gap-1.5">
+                <Key className="h-3.5 w-3.5 text-blue-400" />
+                <span>DeepSeek API Key</span>
+              </label>
+              <input
+                type="password"
+                value={deepseekKey}
+                onChange={(e) => setDeepseekKey(e.target.value)}
+                placeholder="sk-..."
+                className="w-full h-8 rounded bg-canvas-900 border border-canvas-600 px-2.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+          )}
+
+          {provider === 'groq' && (
+            <div>
+              <label className="block font-medium text-gray-300 mb-1 flex items-center gap-1.5">
+                <Key className="h-3.5 w-3.5 text-amber-400" />
+                <span>Groq API Key</span>
+              </label>
+              <input
+                type="password"
+                value={groqKey}
+                onChange={(e) => setGroqKey(e.target.value)}
+                placeholder="gsk_..."
                 className="w-full h-8 rounded bg-canvas-900 border border-canvas-600 px-2.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
               />
             </div>

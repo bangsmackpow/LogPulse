@@ -12,6 +12,24 @@ interface AIModalProps {
   targetLineIndex?: number;
 }
 
+const PROVIDER_MODELS: Record<string, string[]> = {
+  openrouter: [
+    'anthropic/claude-3.5-sonnet',
+    'deepseek/deepseek-r1',
+    'deepseek/deepseek-chat',
+    'openai/gpt-4o',
+    'meta-llama/llama-3.3-70b-instruct',
+    'mistralai/mistral-large-2411',
+    'custom',
+  ],
+  deepseek: ['deepseek-reasoner', 'deepseek-chat', 'custom'],
+  groq: ['llama-3.3-70b-versatile', 'mixtral-8x7b-32768', 'custom'],
+  openai: ['gpt-4o', 'gpt-4o-mini', 'o1-mini', 'custom'],
+  anthropic: ['claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307', 'custom'],
+  gemini: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-exp', 'custom'],
+  ollama: ['llama3', 'mistral', 'qwen2.5', 'custom'],
+};
+
 export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, targetLineIndex }) => {
   const { lines } = useLogStore();
   const {
@@ -25,12 +43,15 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, targetLineInd
     setIncludeTelemetry,
     provider,
     model,
+    setProvider,
+    setModel,
   } = useAIStore();
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<AIResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isCustomModel, setIsCustomModel] = useState(false);
 
   // Compute surrounding context lines based on N before and M after
   const rawContextBlock = useMemo(() => {
@@ -131,13 +152,79 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, targetLineInd
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 select-text">
       <div className="flex h-[88vh] w-full max-w-4xl flex-col rounded-xl border border-canvas-600 bg-canvas-800 shadow-2xl text-xs text-gray-200 overflow-hidden">
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-canvas-700 bg-canvas-850 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-indigo-400" />
-            <span className="font-semibold text-sm text-white">Investigate with AI Assist</span>
-            <span className="rounded bg-canvas-700 px-2 py-0.5 text-[10px] text-indigo-300 font-mono uppercase">
-              {provider} • {model}
-            </span>
+        <div className="flex items-center justify-between border-b border-canvas-700 bg-canvas-850 px-4 py-2.5">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="h-4 w-4 text-indigo-400" />
+              <span className="font-semibold text-sm text-white">Investigate with AI</span>
+            </div>
+
+            {/* Provider Selector */}
+            <div className="flex items-center gap-2">
+              <select
+                value={provider}
+                onChange={(e) => {
+                  const p = e.target.value;
+                  setProvider(p);
+                  setIsCustomModel(false);
+                  const defaultModels = PROVIDER_MODELS[p] || ['default'];
+                  setModel(defaultModels[0]);
+                }}
+                className="h-7 rounded bg-canvas-900 border border-canvas-600 px-2 text-[11px] text-indigo-300 font-medium focus:outline-none focus:border-indigo-500 cursor-pointer"
+              >
+                <option value="openrouter">OpenRouter (100+ Models)</option>
+                <option value="deepseek">DeepSeek</option>
+                <option value="groq">Groq</option>
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic</option>
+                <option value="gemini">Google Gemini</option>
+                <option value="ollama">Ollama (Local)</option>
+              </select>
+
+              {/* Model Selector */}
+              {!isCustomModel ? (
+                <select
+                  value={model}
+                  onChange={(e) => {
+                    if (e.target.value === 'custom') {
+                      setIsCustomModel(true);
+                      setModel('');
+                    } else {
+                      setModel(e.target.value);
+                    }
+                  }}
+                  className="h-7 rounded bg-canvas-900 border border-canvas-600 px-2 text-[11px] text-gray-200 font-mono focus:outline-none focus:border-indigo-500 cursor-pointer max-w-[220px]"
+                >
+                  {(PROVIDER_MODELS[provider] || ['default', 'custom']).map((m) => (
+                    <option key={m} value={m}>
+                      {m === 'custom' ? 'Custom Model ID...' : m}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    placeholder="Enter model ID..."
+                    className="h-7 w-48 rounded bg-canvas-900 border border-indigo-500 px-2 text-[11px] text-white font-mono focus:outline-none"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => {
+                      setIsCustomModel(false);
+                      const def = PROVIDER_MODELS[provider] || ['default'];
+                      setModel(def[0]);
+                    }}
+                    className="text-[10px] text-gray-400 hover:text-gray-200 px-1"
+                    title="Return to preset list"
+                  >
+                    Reset
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           <button onClick={onClose} className="rounded p-1 text-gray-400 hover:text-white">
             <X className="h-4 w-4" />

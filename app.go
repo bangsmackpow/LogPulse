@@ -255,6 +255,9 @@ func (a *App) GetSettings() (map[string]string, error) {
 		"api_key_openai",
 		"api_key_anthropic",
 		"api_key_gemini",
+		"api_key_openrouter",
+		"api_key_deepseek",
+		"api_key_groq",
 		"ollama_endpoint",
 		"monthly_budget_usd",
 	}

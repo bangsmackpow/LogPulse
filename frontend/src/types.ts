@@ -36,3 +36,6 @@ export interface SessionMarker {
   label: string;
   afterLineNumber: number;
 }
+
+export type AIProvider = 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'openrouter' | 'deepseek' | 'groq';
+
